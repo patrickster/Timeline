@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>When Did They Live?</title>
+<meta name="description" content="Plot the lifespan of any person on Wikipedia">
+<link href='http://fonts.googleapis.com/css?family=Old+Standard+TT' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Cutive' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" href="../resources/css/jquery-ui.css" />
+<link rel="stylesheet" href="../resources/css/timeline.css" />
+
+<script src="./jquery-ui-1.9.2.custom/js/jquery-1.8.3.js"></script>
+<script src="./jquery-ui-1.9.2.custom/js/jquery-ui-1.9.2.custom.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="timeline.js"></script>
+<script type="text/javascript">
+//   // jQuery(document).ready(function($){
+//   //   $('#personsearch').autocomplete({source:'person_suggest.php?term=?', minLength:3});
+//   // });
+
+// $(function() {
+//     $("#personsearch").autocomplete({
+//     source: function( request, response ) {
+//       console.log(request);
+//       $.ajax({
+//         url: "http://lookup.dbpedia.org/api/search.asmx/PrefixSearch?QueryClass=Person&MaxHits=8&QueryString=" + request["term"],
+//         dataType: "xml",
+//         success: function( xmlResponse ) {
+//           response( ($( xmlResponse).find("Result") ).map(function() {
+//             return {
+//               value: ($(this)).find("Label:first").text(),
+//               id: ($(this)).find("URI:first").text()
+//             };
+//           }));
+//         }
+//       });
+//     },
+//     minLength: 4
+//   });
+// });
+
+// $(function() {
+//   $( "#personsearch" ).autocomplete({
+//     source: function( request, response ) {
+//       $.ajax({
+//         url: "http://http://localhost:8888/timeline/person_suggest.php?jsonp_callback=?",
+//         jsonp: "jsonp_callback",
+//         data: {
+//           featureClass: "P",
+//           style: "full",
+//           maxRows: 12,
+//           name_startsWith: request.term
+//         },
+//         success: function( data ) {
+//           alert(data);
+//           response( $.map( data, function( item ) {
+//             return {
+//               label: item.label,
+//               value: item.value
+//             }
+//           }));
+//         }
+//       });
+//     },
+//     minLength: 2,
+//     select: function( event, ui ) {
+//       log( ui.item ?
+//         "Selected: " + ui.item.label :
+//           "Nothing selected, input was " + this.value);
+//     }
+//   });
+// });
+
+// function suggest(inputString) {
+//   if (inputString.length > 3) {
+//     $.ajax({
+//       url: "http://localhost:8888/person_suggest.php",
+//       type: "post",
+//       data: { term : inputString },
+//       success: function(data) {
+//         alert(data);
+//       }
+//     });
+//   }
+// }
+
+var MAX_RESULTS = 10;
+var MAX_ROWS = 24;
+var CURRENT_YEAR = 2013;
+
+
+
+/* Graphical parameters */
+var canvasWidth = 1200;
+var canvasHeight = 515;
+var leftMargin = 200;
+var rightMargin = 200;
+var topMargin = 20;
+var bottomMargin = 5; 
+var barHeight = 10; // height of each bar
+var lineSpacing = 20; // vertical distance between lines
+var topLineOffset = 5;
+
+/* Variables */
+var currentIndex = 0;
+var currentID = 0;
+var minYear = new Date("1600-01-01");
+var maxYear = new Date("1800-01-01");
+
+var svg;
+var timeScale;
+var xAxis;
+var format;
+
+var cache = new Array();
+var startYears = [];
+var stopYears = [];
+var data = [];
+
+
+function updateAxis () {
+
+  var births = data.map(function(e) { return e.birth} );
+  var deaths = data.map(function(e) { return e.death} );
+
+  var oldMinYear = minYear, oldMaxYear = maxYear;
+  var minBirth = Math.min.apply(Math, births);
+  var maxDeath = Math.max.apply(Math, deaths);
+  
+  var intMinYear = 50 * Math.floor(minBirth / 50) - 5;
+  var intMaxYear = 50 * Math.ceil(maxDeath / 50) + 5;
+
+  // if (intMinYear == 0) {
+  //   intMinyear = 1;
+  // }
+  // if (intMaxYear == 0) {
+  //   intMaxYear = 1;
+  // }
+  if (intMaxYear > CURRENT_YEAR) {
+    intMaxYear = CURRENT_YEAR;
+  }
+  minYear = intMinYear;
+  maxYear = intMaxYear;
+  // minYear = new Date(intMinYear, 1, 1);
+  // maxYear = new Date(intMaxYear, 1, 1);
+  if (minYear == oldMinYear && maxYear == oldMaxYear) {
+    return false;
+  }
+  return true;
+}
+
+
+function rescale(delay) {
+
+  // Create time scale for new axis limits
+  timeScale = d3.scale.linear()
+      .domain([minYear, maxYear])
+      .range([leftMargin, canvasWidth - rightMargin]);
+
+  // Update axis
+  xAxis.call(d3.svg.axis()
+               .scale(timeScale)
+               .orient("top")
+               .tickSize(6,3,0)
+               .tickFormat(format));
+
+  // Add transitions for each bar
+  svg.selectAll(".bar").transition()
+    .attr("x", function(d) {
+      return(timeScale(d.birth));
+    })  
+    .attr("width", function(d) {
+      return(timeScale(d.death) - timeScale(d.birth));
+    })
+    .delay(delay);
+}
+
+
+function createGuidelinePath(y) {
+  return "M " + leftMargin + " " +  y + " L " + (canvasWidth - rightMargin) + " " + y;
+}
+
+function createCloseIconPath(y) {
+  var h = 8;
+  var r = 1.5;
+  var x = canvasWidth - rightMargin + 10;
+  var tan45 = Math.tan(Math.PI / 4);
+  var path = "M" + (x)                       + " " + (y + r)
+           + "L" + (x + tan45 * (h / 2 - r)) + " " + (y + h / 2)
+           + "L" + (x + h / 2)               + " " + (y + tan45 * (h / 2 - r))
+           + "L" + (x + r)                   + " " + (y)
+           + "L" + (x + h / 2)               + " " + (y - tan45 * (h / 2 - r))
+           + "L" + (x + tan45 * (h / 2 - r)) + " " + (y - h / 2)
+           + "L" + (x)                       + " " + (y - r)
+           + "L" + (x - tan45 * (h / 2 - r)) + " " + (y - h / 2)
+           + "L" + (x - h / 2)               + " " + (y - tan45 * (h / 2 - r))
+           + "L" + (x - r)                   + " " + (y)
+           + "L" + (x - h / 2)               + " " + (y + tan45 * (h / 2 - r))
+           + "L" + (x - tan45 * (h / 2 - r)) + " " + (y + h / 2) 
+           + "Z";
+  return path;
+}
+
+function createCanvas () {
+
+  format = d3.format("0d");
+  // format = d3.time.format("%Y");
+
+  timeScale = d3.time.scale.utc()
+    .domain([new Date(1695,1,1), new Date(1905,1,1)])
+    .range([leftMargin, canvasWidth - rightMargin]);
+
+  timeScale = d3.scale.linear()
+    .domain([1695, 1905])
+    .range([leftMargin, canvasWidth - rightMargin]);
+
+    // .tickFormat("%Y");
+  
+  // timeScale = d3.scale.linear()
+  //   .domain([minYear, maxYear])
+  //   .range([leftMargin, canvasWidth - rightMargin]);
+
+  svg = d3.select("#timeline_div").append("svg:svg")
+    .attr("id", "timeline")
+    .attr("width", canvasWidth)
+    .attr("height", canvasHeight);
+
+  svg.append("g").attr("id", "rows");
+
+  // xAxis = svg.append("g")
+  //   .attr("class", "axis")
+  //   .attr("transform", "translate(0," + 20 + ")")
+  //   .call(d3.svg.axis()
+  //               .scale(timeScale)
+  //               .tickFormat(format)
+  //               .orient("top"));
+  xAxis = svg.append("g")
+    .attr("class", "axis")
+    .attr("transform", "translate(0," + 20 + ")")
+    .call(d3.svg.axis()
+                .scale(timeScale)
+                .orient("top")
+                .tickSize(6,3,0)
+                .tickFormat(format));
+// .tickFormat(d3.format("0d"))
+  // Add border
+  var border = svg.append("g")
+    .attr("class", "border");
+
+  // Create path for timeline border
+  var borderPath = "M" + leftMargin + " " + topMargin +
+                  " L" + leftMargin + " " + (canvasHeight - bottomMargin) +
+                  " L" + (canvasWidth - rightMargin) + " " + (canvasHeight - bottomMargin) +
+                  " L" + (canvasWidth - rightMargin) + " " + topMargin + "Z";
+
+  // Append border path
+  svg.append("svg:path")
+    .attr("class", "border")
+    .attr("d", borderPath);
+
+
+  // border.append("svg:line")
+  //   .attr("x1", leftMargin)
+  //   .attr("x2", leftMargin)
+  //   .attr("y1", 20)
+  //   .attr("y2", canvasHeight - bottomMargin);
+
+  // border.append("svg:line")
+  //   .attr("x1", canvasWidth - rightMargin)
+  //   .attr("x2", canvasWidth - rightMargin)
+  //   .attr("y1", 20)
+  //   .attr("y2", canvasHeight - bottomMargin);
+
+  // border.append("svg:line")
+  //   .attr("x1", leftMargin)
+  //   .attr("x2", canvasWidth - rightMargin)
+  //   .attr("y1", canvasHeight - bottomMargin)
+  //   .attr("y2", canvasHeight - bottomMargin);
+
+}
+
+
+
+function addLifespan(name, years) {
+
+  if (currentIndex == MAX_ROWS) {
+    return;
+  }
+
+  var birth = years.birth,
+    death = years.death;
+
+  if (death == 0) {
+    death = 2013;
+  }
+
+  var birthInt = parseInt(birth);
+  var deathInt = parseInt(death);
+
+  // var birth = new Date(birth, 1, 1);
+  // var death = new Date(death, 1, 1);
+  
+  // var span = death - birth;
+  var span = deathInt - birthInt;
+
+  data.push({
+    id: currentID,
+    name: name,
+    birth: birthInt,
+    death: deathInt,
+    span: span
+  });
+  
+  var delay = 0; // delay in adding new bar (0 unless plot needs to be rescaled)
+
+  var axisChanged = updateAxis();
+  if (axisChanged) {
+    rescale(0);
+    delay = 250;
+  }
+
+  // Compute endpoints of new bar
+  var birthX = timeScale(birth);
+  var deathX = timeScale(death);
+
+  // Append row 
+  var newRow = svg.select("#rows").append("g")
+    .attr("class", "row")
+    .datum({id: currentID, index: currentIndex, birth: birthInt, death: deathInt});
+
+  // newRow.datum(currentIndex);
+
+  // newRow.append("svg:line")
+  //   .attr("class", "guideline")
+  //   .attr("x1", leftMargin)
+  //   .attr("x2", canvasWidth - rightMargin)
+  //   .attr("y1", 30 + 20 * currentIndex + barHeight / 2)
+  //   .attr("y2", 30 + 20 * currentIndex + barHeight / 2);
+
+  var y = getYPos(currentIndex);
+
+
+
+  newRow.append("svg:path")
+    .attr("class", "guideline")
+    .attr("d", createGuidelinePath(y + barHeight / 2));
+
+  var addedBar = newRow.append("rect")
+    .attr("class", "bar")
+    .attr("x", birthX)
+    .attr("y", 30 + 20 * currentIndex)
+    .attr("height", barHeight)
+    .attr("width", 0)
+    .style("fill", "gray")
+    .on("mouseover", function() {
+      d3.select(this).style("fill", "#ED5456")
+    })
+    .on("mouseout", function() {
+      d3.select(this).style("fill", "gray")
+    })
+    .on("click", function(d) {
+      removeRow(d.index);
+    });
+
+  console.log(addedBar.datum());
+
+  addedBar.transition()
+    .delay(delay)
+    .duration(250)
+    .attr("width", deathX - birthX);
+
+  newRow.append("svg:text")
+    .attr("class", "name")
+    .attr("x", leftMargin - 8)
+    .attr("y", 30 + 20 * currentIndex + barHeight)
+    .style("text-anchor", "end")
+    .text(name);
+
+  // Append close icon
+  // var closeIconPath = createCloseIconPath(y);
+  // newRow.append("svg:path")
+  //   .attr("class", "closeIcon")
+  //   .attr("d", closeIconPath);
+
+  // newRow.append("svg:text")
+  //   .attr("class", "name")
+  //   .attr("x", canvasWidth - rightMargin + 5)
+  //   .attr("y", 30 + 20 * currentIndex + barHeight)
+  //   .text(years.birth + " - " + years.death);
+
+  // newRow.append("svg:text")
+  //   .attr("class", "name")
+  //   .attr("x", canvasWidth - rightMargin + 5)
+  //   .attr("y", 30 + 20 * currentIndex + barHeight)
+  //   .text("Click to remove");
+
+    // .attr("dy", "4px")
+
+  // newRow.append("svg:image")
+  //   .datum(currentIndex)
+  //   .attr("class", "close_icon")
+  //   .attr("x", canvasWidth - rightMargin + 10)
+  //   .attr("y", 30 + 20 * currentIndex + 1)
+  //   .attr("height", 8)
+  //   .attr("width", 8)
+  //   .attr("xlink:href", "./x.png")
+  //   .on("click", function(d) { removeRow(d) });
+
+  // console.log(currentIndex);
+  currentIndex += 1;  
+  currentID += 1;
+}
+
+// Removes the row at the specified index
+function removeRow (index) {
+
+  // Select and remove row at specified index
+  svg.selectAll(".row").filter(function(d) {
+    return d.index == index;
+  }).remove();
+
+  // Call shiftUp function on rows at higher indices
+  svg.selectAll(".row").filter(function(d) {
+    return d.index >= index;
+  }).each(shiftUp);
+
+  // Remove data at specified index
+  data.splice(index, 1);
+
+  // Decrement currentIndex
+  currentIndex -= 1;
+
+  // Check if axes need to be updated (if there are > 0 bars remaining)
+  if (currentIndex > 0) {
+    var axesUpdated = updateAxis();
+    if (axesUpdated) {
+      rescale(500);  
+    }
+  }
+
+}
+
+function shiftUp () {
+  var row = d3.select(this);
+  var index = row.datum().index;
+  var id = row.datum().id;
+  moveRow(id, index - 1);
+  // console.log(this);
+  // d3.select(this).transition()
+  //   .attr("transform", "translate(0,-20)")
+  //   .delay(250);
+
+  // var curY = d3.select(this).select(".bar").attr("y");
+  // var newY = curY - 20;
+  // d3.select(this).select(".bar").transition()
+  //   .attr("y", newY);
+  // d3.select(this).select(".guideline").transition()
+  //   .attr("d", createGuidelinePath(newY + barHeight / 2));
+  // d3.select(this).select(".name").transition()
+  //   .attr("y", (newY + barHeight));
+  // d3.select(this).select(".close_icon").transition()
+  //   .attr("y", (newY + 1));
+}
+
+
+function submit(value) {
+  if (value in cache) {
+    addLifespan(value, cache[value]);
+    // console.log(cache[value]);
+  }
+}
+
+function convertYearToPixels(year) {
+  return( (year - minYear) / (maxYear - minYear) * canvasWidth );
+}
+
+function clear() {
+  svg.selectAll(".row").remove();
+  // startYears = [];
+  // stopYears = [];
+  data = [];
+  currentIndex = 0;
+}
+
+function sortByBirth() {
+  data.sort(compareBirths);
+  sortRows();
+}
+
+function sortByName() {
+  data.sort(compareNames);
+  sortRows();
+}
+
+function sortByLifespan() {
+  data.sort(compareLifespans);
+  sortRows();
+}
+
+function sortRows() {
+  // Iterate through sorted data
+  for (var i = 0; i < data.length; i++) {
+    var id = data[i].id;
+    moveRow(id, i);
+  }
+
+  // for (var j = 0; j < data.length; j++) {
+  //   var row = svg.selectAll(".row").filter(function(d, i) {
+  //     return i == j;
+  //   };
+
+  // }
+
+  // var moved_rows = [];
+  // for (var j = 0; j < data.length; j++) {
+  //   var current_pos = data[j].pos;
+  //   var row = svg.selectAll(".row").filter(function(d, i) {
+  //     var is_target_row = (d == j & $.inArray(i, moved_rows) > -1);
+  //     if (is_target_row = true) {
+  //       moved_rows.push(i);
+  //     }
+  //     return is_target_row;
+  //   });
+  //   row.datum(j);
+  //   data[j].pos = j;
+  // }
+  // //svg.selectAll(".row").order([1,2,3]);
+  // // console.log(data);
+}
+
+function getYPos(index) {
+  return (topMargin + topLineOffset + lineSpacing * index + barHeight / 2);
+}
+
+function moveRow(id, new_index) {
+  
+  // Select row with specified id
+  var row = svg.selectAll(".row").filter(function(d) {
+    return d.id == id;
+  });
+
+  // Update the index for this row
+  var d = row.datum();
+  console.log(["hello", d]);
+  d.index = new_index;
+  row.datum(d);
+
+  var newY = getYPos(new_index);
+
+  row.select(".bar").transition()
+    .attr("y", newY);
+  row.select(".guideline").transition()
+    .attr("d", createGuidelinePath(newY + barHeight / 2));
+  row.select(".name").transition()
+    .attr("y", (newY + barHeight));
+  // d3.select(this).select(".close_icon").transition()
+  //   .attr("y", (newY + 1));
+
+  // svg.selectAll(".row").each(function(d) {console.log(d)} );
+}
+
+/* Comparison functions for sorting */
+function compareBirths (a, b) {
+  if (a.birth < b.birth) 
+    return -1
+  if (a.birth > b.birth)
+    return 1
+  return 0
+}
+
+function compareLifespans (a, b) {
+  if (a.span < b.span) 
+    return -1
+  if (a.span > b.span)
+    return 1
+  return 0
+}
+
+function compareNames (a, b) {
+  if (a.name < b.name) 
+    return -1
+  if (a.name > b.name)
+    return 1
+  return 0
+}
+
+$(document).ready(function() {
+
+  createCanvas();
+
+  $("#search_box").autocomplete({
+    source: function( request, response ) {
+      $.ajax({
+        url: "http://localhost:8888/person_suggest.php",
+        type: "post",
+        dataType: "json",
+        data : { term : request["term"] },
+        success: function( data ) {
+          data = data.slice(0, MAX_RESULTS); // limit number of results displayed
+          response( $.map( data, function( item ) {
+            cache[item.label] = item.value;
+            return item.label;
+          }));
+        }
+      });
+    },
+    minLength: 4
+  });
+
+  $("#search_box").keypress(function (e) {
+    if (e.which == 13) {
+      submit(this.value);
+      this.value = "";
+      return false;
+    }
+  });
+  
+  $("#clear_all").click(function () {
+    clear();
+  });
+
+  $("#name_sort").click(function () {
+    sortByName();
+  });
+
+  $("#birth_sort").click(function () {
+    sortByBirth();
+  });
+
+  $("#lifespan_sort").click(function () {
+    sortByLifespan();
+  });
+
+
+});
+
+
+//onkeyup="suggest(this.value)
+
+</script>
+
+</head>
+<body>
+<div id="header_div" > 
+  <div id="title_div">
+    <h1>When did they live?</h1>
+  </div>  
+  <div id="search_div" class="ui-helper-clearfix">
+    <input type="text" id="search_box" align="right" placeholder="Enter a name" autofocus  />
+  </div>
+</div>
+
+<div id="timeline_div">
+</div>
+<div id="control_div">
+<span>Sort by </span>
+<span class="control" id="name_sort">name</span>
+<span>/<span>
+<span class="control" id="birth_sort">birth</span>
+<span>/<span>
+<span class="control" id="lifespan_sort">lifespan</span>
+<span class="control" id="clear_all" >Clear all</span>
+</div>
+   
+</body>
+</html>
