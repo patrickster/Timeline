@@ -1,39 +1,9 @@
 
-@font-face {
-  font-family: Quicksand;
-  src: url(./Fonts/Quicksand.woff);
-}
-
-@font-face {
-  font-family: CartoGothic;
-  src: url(../fonts/CartoGothicStd-Book-webfont.ttf);
-}
-
-@font-face {
-  font-family: SketchRockwell;
-  src: url(./Fonts/SketchRockwell-Bold.ttf);
-}
-
 body {
   border-top: 4px solid;
   border-color: rgb(10, 10, 20);
-
-  /*border-top: 3px solid;
-  border-top-color: #ED5456;
-  border-top-color: rgb(51, 51, 51);
-  */
   margin: 0;
-
-  /*background-color: whiteSmoke;*/
-  /*background-color: rgb(238,238,238);*/
-  /*background-image: url("../images/bgnoise.png");*/
-  /*background-color: rgb(250, 250, 249);*/
   background-color: rgb(251, 251, 251);
-  /*#FCFCFA;*/
-}
-
-#bottom {
-  background-color: #FCBDBE; 
 }
 
 #header_div {
@@ -41,7 +11,6 @@ body {
   width: 1000px;
   height: 80px;
   padding-left: 200px;
-  /*padding-right: 200px;*/
   margin-bottom: 20px;
   margin-top: 20px;
 }
@@ -54,7 +23,6 @@ body {
   padding-bottom: 50px;
 }
 
-
 #title_div {
   float: left;
   width: 550px;
@@ -66,12 +34,9 @@ body {
 
 .header {
   text-align: left;
-  font-family: Georgia, 'CartoGothic', serif;
-  /*font-family: 'Abril Fatface';*/
+  font-family: Georgia, serif;
   text-shadow: 0 0 1px #fff;
   font-size: 34px;
-  /*text-shadow: #fff 0tpx 1px 1px;*/
-  /*padding-top: 12px;*/
   padding-bottom: 0px;
   line-height: 80px;
 }
@@ -85,10 +50,6 @@ body {
   padding-bottom: 0px;
   margin-top: 0;
   display: inline-block;
-}
-
-input {
-  /*background: rgb(253,253,253);*/
 }
 
 #search_box {
@@ -110,34 +71,25 @@ input {
   transition: all .2s ease-in-out;
 }
 
-.ui-autocomplete-loading { 
-  
+.ui-autocomplete-loading {   
   background-image:url('../images/loading.gif');
   background-repeat: no-repeat;
 }
-
 
 .ui-widget {
   font-family: Georgia;
 }
 
-div {
-  /*border: 1px solid;*/
-}
-
 .axis path,
 .axis line,
 .border line {
-    fill: none;
-    stroke: rgb(51, 51, 51);
-    /*shape-rendering: crispEdges;*/
+  fill: none;
+  stroke: rgb(51, 51, 51);
 }
-
 
 .guideline {
   fill: none;
   stroke: rgb(220,220,220);
-
 }
 
 svg {
@@ -154,10 +106,6 @@ svg path {
   stroke: rgb(51, 51, 51);
 }
 
-svg .border {
-  /*fill: rgb(253,253,253);*/
-}
-
 .closeIcon {
   fill: rgb(51, 51, 51);
   stroke: none;
@@ -172,26 +120,16 @@ svg, input {
   margin: 0 auto;
 }
 
-
-
 #clear_all {
   float: right;
   padding-right: 200px;
 } 
-
-.control {
-  /*text-decoration:underline;*/
-}
 
 .control, .close_icon {
   cursor: default;
 
 }
 
-/*.close_icon:hover {
-  color: red;
-}
-*/
 .control:hover {
   color: gray;
 }
