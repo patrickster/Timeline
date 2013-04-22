@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>When Did They Live?</title>
+    <meta name="description" content="Plot the lifespan of any person on Wikipedia">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" href="../resources/css/jquery-ui.css" />
+    <link rel="stylesheet" href="../resources/css/fontello.css" />
+    <link rel="stylesheet" href="css/timeline.css" />
+    <script src="../resources/jquery-ui-1.9.2.custom/js/jquery-1.8.3.js"></script>
+    <script src="../resources/jquery-ui-1.9.2.custom/js/jquery-ui-1.9.2.custom.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="timeline.js"></script>
+    <script type="text/javascript"></script>
+  </head>
+  <body>
+    <section id="top" height="800px">
+      <div id="header_div" > 
+        <div id="title_div">
+          <span class="header">When Did They Live?</span>
+        </div>  
+        <div id="search_div" class="ui-helper-clearfix">
+          <input type="text" id="search_box" align="right" placeholder="Enter a name" autofocus  />
+      </div>
+    </section>
+    <div id="timeline_div">
+    </div>
+    <div id="control_div">
+      <span>Sort by </span>
+      <span class="control" id="name_sort">name</span>
+      <span>/<span>
+      <span class="control" id="birth_sort">birth</span>
+      <span>/<span>
+      <span class="control" id="lifespan_sort">lifespan</span>
+      <span class="control" id="clear_all" >Clear all</span>
+    </div>
+    </div>
+  </body> 
+</html>
