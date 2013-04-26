@@ -21,20 +21,13 @@ query = """
 """
 
 # Open output files
-birth_file = open("./Data/births-pre1000-2.csv", "a")
-death_file = open("./Data/deaths-pre1000-2.csv", "a")
+birth_file = open("./Data/births.csv", "a")
+death_file = open("./Data/deaths.csv", "a")
 
 # Iterate through years
 for year in range(-1000, 2012):
 
   print year
-
-  # Periodically save files in case of interruption
-  if year % 50 == 0:
-    birth_file.close()
-    death_file.close()
-    birth_file = open("./Data/births-pre1000.csv", "a")
-    death_file = open("./Data/deaths-pre1000.csv", "a")
 
   if year < 0:
     birth_cat = str(abs(year)) + "_BC_births"
@@ -46,6 +39,7 @@ for year in range(-1000, 2012):
   birth_query = query % birth_cat
   death_query = query % death_cat
 
+  # Get births for current year
   sparql.setQuery(birth_query)
   results = sparql.query().convert()
   for result in results["results"]["bindings"]:
@@ -54,13 +48,13 @@ for year in range(-1000, 2012):
       label = result["label"]["value"]
       row = '"' + person + '","' + label + '","' + str(year) + '"\n'
       row = row.encode("utf-8")
-
       birth_file.write(row)
     except:
       print "problem with " + str(result)
 
   time.sleep(PAUSE_LENGTH)
 
+  # Get deaths for current year
   sparql.setQuery(death_query)
   results = sparql.query().convert()
   for result in results["results"]["bindings"]:
@@ -75,7 +69,7 @@ for year in range(-1000, 2012):
 
   time.sleep(PAUSE_LENGTH)
 
-
+# Close files
 birth_file.close()
 death_file.close()
 
