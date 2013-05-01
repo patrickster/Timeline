@@ -43,5 +43,5 @@ lives <- lives[-which(is.na(lives$Death) & lives$Birth < 1900),]
 nrow(lives)
 
 ## Write to csv
-write.csv(lives, "../data/lifespans.csv")
+write.csv(lives, "../data/lifespans.csv", row.names=FALSE)
 
