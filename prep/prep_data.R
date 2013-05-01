@@ -1,12 +1,14 @@
 
+rm(list=ls())
+
 ## Load files
-b <- read.csv("./Data/births.csv", as.is=TRUE)
-d <- read.csv("./Data/deaths.csv", as.is=TRUE)
+b <- read.csv("../data/births.csv", as.is=TRUE)
+d <- read.csv("../data/deaths.csv", as.is=TRUE)
 
 b <- b[,2:3]
 d <- d[,2:3]
 
-## Convert to numeric
+## Convert years to numeric
 b$Birth <- as.numeric(b$Birth)
 d$Death <- as.numeric(d$Death)
 
@@ -36,10 +38,10 @@ d <- rbind(d, d.dup.agg)
 lives <- merge(b, d, by="Label", all.x=TRUE)
 
 ## Remove pre-1900 entities where date of death is missing 
-lives <- lives[-which(is.na(lives$death) & lives$Birth < 1900),]
+lives <- lives[-which(is.na(lives$Death) & lives$Birth < 1900),]
 
 nrow(lives)
 
 ## Write to csv
-write.csv("../Data/lifespans.csv")
+write.csv(lives, "../data/lifespans.csv")
 
